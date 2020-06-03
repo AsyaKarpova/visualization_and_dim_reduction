@@ -103,7 +103,16 @@ U_{LC}(K) = \frac{K}{1-N} + \frac{1}{NK}\sum_{(k,l)\in UL_k}q_{kl},
 
 # Сравнение методов визуализации
 
-This package uses the same workflow approach as the R Markdown you know and love. Basically it goes from RMarkdown > Knitr > Markdown > Pandoc > HTML/CSS > PDF. You can even use the bibliography the same way [@R-posterdown].
+## Swissroll (геометрическая проекция)
+Набор данных представляет собой точки из нормального распределения на двумерной плоскости, переведённые в трёхмерное пространство некоторым гладким преобразованием.
+
+```{r pressure, echo=FALSE, out.width = '100%'}
+knitr::include_graphics("swissroll.png")
+```
+
+## FASHION MNIST (изображения обуви и одежды)
+
+## News Aggregator Dataset (заголовки новостей) и 20 Newsgroups (посты в группах)
 
 
 # Выводы
