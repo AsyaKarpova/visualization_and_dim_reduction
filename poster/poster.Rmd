@@ -1,81 +1,117 @@
 ---
-title: Generate Reproducible & Live HTML and PDF Conference Posters Using RMarkdown
+title: Сравнение методов визуализации данных
+title_textsize: 100pt
 author:
-  - name: Brent Thorne
+  - name: Карпова Анастасия
     affil: 1
-    orcid: '0000-0002-1099-3857'
-  - name: Another G. Author
-    affil: 2
+  - name: Омелюсик Владимир
+    affil: 1
 affiliation:
   - num: 1
-    address: Department of Earth Science, Brock University
-  - num: 2
-    address: Department of Graphics and Layouts, University of Posters; Canada
-column_numbers: 3
-logoright_name: https&#58;//raw.githubusercontent.com/brentthorne/posterdown/master/images/betterhexlogo.png
-logoleft_name: https&#58;//raw.githubusercontent.com/brentthorne/posterdown/master/images/betterhexlogo.png
+    address: "Высшая Школа Экономики, Москва, 2020"
+column_numbers: 4
+poster_width: 62in
 output: 
   posterdown::posterdown_html:
     self_contained: false
-bibliography: packages.bib
+bibliography: lit.bib
+sectitle_textsize: 50pt
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE)
 ```
 
-# Introduction
+# Введение
 
-Welcome to `posterdown` ! This is my attempt to provide a semi-smooth workflow for those who wish to take their R Markdown skills to the conference world. Most features from R Markdown are available in this package such as Markdown section notation, figure captioning, and even citations like this one [@R-rmarkdown]. The rest of this example poster will show how you can insert typical conference poster features into your own document. 
+Методы снижения размерности разрабатывались с тридцатых годов прошлого века. Первые алгоритмы (PCA, классический вариант MDS) были линейными, а потому сохраняли глобальные особенности структуры данных. Тем не менее, на практике часто бывает важным сохранить локальные особенности, что привело к активному развитию нелинейных методов. 
 
-## Objectives
+Одной из задач, решаемых с помощью понижения размерности, является визуализация данных. Её суть заключается в в проецировании исходных данных на пространство размерности не выше трёх и последующем изображении векторов в этом пространстве. Эта задача имеет две особенности. Во-первых, качественная визуализация должна быть понятной и доносить до наблюдателя релевантную информацию.Во-вторых, не ясно, как оценивать качество визуализации, ведь критерии "хорошей картинки" могут варьироваться от задачи к задаче. 
 
-1. Easy to use reproducible poster design. 
-2. Integration with R Markdown.
-3. Easy transition from `posterdown` to `pagedown` report or manuscript documents [@R-pagedown].
+В этом обзоре мы рассмотрим некоторые методы понижения размерности и их применение для визуализации данных, а также примеры метрик для сравнения их качества.
 
-# Methods
+# Описание методов визуализации
+
+## MDS
+Основная идея состоит в том, чтобы отобразить точки из исходного признакового пространства в пространство меньшей размерности таким образом, чтобы попарное расстояние между точками в новом пространстве было как можно более близко к расстоянию между ними в исходном пространстве. Расстояния задаются матрицей расхождений $D = \{d_{i, j}\}_{i, j = 1}^N$, а векторы нового пространства $x_1 \ldots x_N$ подбираются путём минимизации функции стресса:
+\[
+\text{Stress}_D(x_1, \ldots x_N) = \left( \sum_{i \ne j = 1\ldots N} (d_{i, j} - ||x_i - x_j||)^2  \right)^{1/2}.
+\]
+В настоящее время существует достаточно много модификаций метода. 
+
+## Isomap
+Графовый метод для работы с нелинейными многообразиями, алгоритм которого состоит из трёх шагов:
+
+1. Построить граф окрестностей и для каждой точки многообразия найти её соседей. Изобразить окрестности в виде взвешенного графа, весами которого являются расстояния между соседними точками.
+2. Перевести расстояния между всеми парами точек в геодезические. Получить матрицу кратчайших маршрутов между всеми парами точек.
+3. Применить MDS к полученной матрице.
+
+## LLE
+Ещё один нелинейный метод, созданный для сохранения как глобальных, так и локальных структрур данных. Алгоритм состоит из трёх шагов:
+
+1. Для каждой точки найти $k$ ближайших соседей.
+2. Представить каждую точку в виде линейной комбинации её соседей с некоторыми весами, которые подбираются путём минимизации функции потерь:
+\[
+\varepsilon(W) = \sum_i|x_i - \sum_{i, j}w_{ij}x_j|^2.
+\]
+3. С помощью полученных весов подобрать представление вектора в новом пространстве:
+\[
+\Phi(y) = \sum_i|y_i - \sum_{j}w_{ij}y_j|^2.
+\]
+
+## t-SNE
+Метод предложен как модификация метода SNE, идея которого заключается в преобразовании расстояний между точками в исходном пространстве в условные вероятности, которые отражали бы меру сходства между этими точками:
+\[
+p_{j | i} = \dfrac{\exp(-||x_i - x_j||^2 / 2\sigma^2_i)}{\sum_{k \ne i}\exp(-||x_i-x_k||^2/2\sigma_i^2)}.
+\]
+Аналогично меру сходства $q_{j | i}$ можно определить и в пространстве меньшей размерности. Векторы нового пространства подбираются минимизацией KL-дивергенции:
+\[
+\text{Loss} = \sum_i KL(P_i || Q_i) = \sum_i \sum_j p_{j | i} \log \dfrac{p_{j | i}}{q_{j | i}}.
+\]
+Тем не менее, данную функцию потерь достаточно сложно оптимизировать из-за наличия экспонент, а также так называемой "проблемы столпотворения". t-SNE решает эти проблемы заменой нормального распределения в новом пространстве на $t_1$-распределение. Основным гиперпараметром является перплексия. 
+
+## UMAP
+Метод предложен в 2018 году и на данный момент является одним из самых популярных. Алгоритм состоит из трёх шагов:
+
+1. Для каждой точки найти $k$ ближайших соседей и построить взвешенный ориентированный граф.
+2. Рассчитать нормализованный лаплассиан графа и выбрать $d$ его первых собственных векторов в качестве начального представления в новом пространстве.
+3. Оптимизировать полученное представление.
+
+## TMAP
+Метод предложен в 2020 году для визуализации больших наборов данных, для которых важно сохранить локальные связи между объектами. Такие наборы часто встречаются в биологии и ядерной физике. Алогритм состоит из четырёх шагов.
+
+1. Провести Min-Hash + LSH Forest индексацию.
+2. Построить ненаправленный взвешенный c-k-NNG граф.
+3. Построить MST на этом графе при помощи алгоритма Краскала.
+4. Изобразить MST на евклидовой плоскости.
+
+# Метрики качества визуализации
+
+Все перечисленные ниже метрики используют коранговую матрицу $Q$ и основаны на идее о том, что качественная визуализация должна сохранять окрестности точек.
+
+1. Достоверность и непрерывность. Проекция точки называется достоверной, если $K$ её ближайших соседей в новом пространстве также являются её ближайшими соседями в исходном пространстве. Непрерывность определяется таким же образом для нового пространства.
+\[
+T(K) = 1-\frac{2}{NK(2N - 3K - 1)} \sum_{(k, l) \in L L_{K}}(k-K) q_{k l}.
+\]
+\[
+C(K) = 1-\frac{2}{NK(2N - 3K - 1)} \sum_{(k, l) \in U R_{K}}(k-K) q_{k l}.
+\]
+2. LCMC.
+\[
+U_{LC}(K) = \frac{K}{1-N} + \frac{1}{NK}\sum_{(k,l)\in UL_k}q_{kl},
+\]
+
+# Сравнение методов визуализации
 
 This package uses the same workflow approach as the R Markdown you know and love. Basically it goes from RMarkdown > Knitr > Markdown > Pandoc > HTML/CSS > PDF. You can even use the bibliography the same way [@R-posterdown].
 
-# Results
 
-Usually you want to have a nice table displaying some important results that you have calculated. In `posterdown` this is as easy as using the `kable` table formatting you are probably use to as per typical R Markdown formatting.
-
-You can reference tables like so: Table \@ref(tab:mytable). Lorem ipsum dolor sit amet, consectetur adipiscing elit. Aliquam placerat augue at velit tincidunt semper. Donec elementum porta posuere. Nullam interdum, odio at tincidunt feugiat, turpis nisi blandit eros, eu posuere risus felis non quam. Nam eget lorem odio. Duis et aliquet orci. Phasellus nec viverra est.
-
-```{r mytable, out.width='80%'}
-knitr::kable(iris[1:10, 1:4], caption = 'Table caption.',align = 'c',"html")
-```
-
-Or with figures: Figure \@ref(fig:standard-plot), or Figure \@ref(fig:morefigs).
-
-```{r standard-plot, out.width='80%', fig.align='center', fig.cap='Great figure!', fig.height=5}
-plot(mtcars[1:2])
-```
-
-```{r morefigs, out.width='80%', echo=TRUE, fig.cap='Amazing, right?!', fig.height=5}
-data <- iris
-
-plot(x = data$Sepal.Length, 
-     y = data$Sepal.Width, 
-     col = data$Species,
-     pch = 19, 
-     xlab = "Sepal Length (cm)",
-     ylab = "Sepal Width (cm)")
-
-```
-
-# Next Steps
-
-Aliquam sed faucibus risus, quis efficitur erat. Vestibulum semper mauris quis tempus eleifend. Aliquam sagittis dictum ipsum, quis viverra ligula eleifend ut. Curabitur sagittis vitae arcu eget faucibus. In non elementum felis. Duis et aliquam nunc. Nunc pulvinar sapien nunc, vel pretium nisi efficitur in. Fusce fringilla maximus leo et maximus. Fusce at ligula laoreet, iaculis mi at, auctor odio. Praesent sed elementum justo. Aenean consectetur risus rhoncus tincidunt efficitur. Praesent dictum mauris at diam maximus maximus [@R-posterdown].
-
-# Conclusion
+# Выводы
 
 Try `posterdown` out! Hopefully you like it!
 
 ```{r, include=FALSE}
-knitr::write_bib(c('knitr','rmarkdown','posterdown','pagedown'), 'packages.bib')
+knitr::write_bib(c('knitr','rmarkdown','posterdown','pagedown'), 'lit.bib')
 ```
 
 # References
